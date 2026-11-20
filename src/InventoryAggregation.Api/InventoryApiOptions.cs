@@ -12,4 +12,7 @@ public sealed class InventoryApiOptions
 
     [Required(ErrorMessage = """InventoryApi:BaseUrl is missing. Set it with: dotnet user-secrets set "InventoryApi:BaseUrl" "<base URL>" --project src/InventoryAggregation.Api""")]
     public string BaseUrl { get; set; } = "";
+
+    [Required(ErrorMessage = """InventoryApi:ApiKey is missing. Set it with: dotnet user-secrets set "InventoryApi:ApiKey" "<API key>" --project src/InventoryAggregation.Api""")]
+    public string ApiKey { get; set; } = "";
 }
