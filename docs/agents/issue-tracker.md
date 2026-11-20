@@ -12,7 +12,16 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Count open blockers**: `gh api repos/<owner>/<repo>/issues/<n> --jq .issue_dependencies_summary.blocked_by` (open blockers only; 0 means startable). `gh issue view <n> --json blockedBy` also lists closed blockers, so filter it: `--jq '[.blockedBy.nodes[] | select(.state == "OPEN")] | length'`.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
-- **Close**: post the explanation with `gh issue comment <number> --body "..."`, then `gh issue close <number>`. On an already-closed issue, `gh issue close --comment` drops the comment and still exits 0.
+- **Close**: first follow **Before closing a ticket** below. Then post the explanation with `gh issue comment <number> --body "..."`, then `gh issue close <number>`. On an already-closed issue, `gh issue close --comment` drops the comment and still exits 0.
+
+## Before closing a ticket
+
+Do all of these, in order, every time:
+
+1. **Tick every acceptance criterion.** Check each `- [ ]` item against the work with evidence (a passing test, a run of the service, a search of the code), then edit the issue body so it reads `- [x]` (`gh issue edit <number> --body-file <file>`). Never close a ticket with an unticked box. If a criterion was dropped or changed, say so on the issue first.
+2. **Check every open ticket.** Read all open issues and update any that the finished work affects: a test deferred to a later ticket, a type or name a later ticket will build on, a note the README ticket needs. Edit the body when it changes what to build or how it is accepted; comment otherwise.
+3. **Make sure the work is pushed**, so the closed ticket points at code that is visible on GitHub.
+4. **Close it**, as in **Close** above, with a comment summarising what was built.
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
