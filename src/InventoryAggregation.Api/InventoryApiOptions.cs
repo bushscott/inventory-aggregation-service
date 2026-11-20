@@ -15,4 +15,7 @@ public sealed class InventoryApiOptions
 
     [Required(ErrorMessage = """InventoryApi:ApiKey is missing. Set it with: dotnet user-secrets set "InventoryApi:ApiKey" "<API key>" --project src/InventoryAggregation.Api""")]
     public string ApiKey { get; set; } = "";
+
+    /// <summary>Records per page. 25 is the most the Inventory API allows, so it needs the fewest requests.</summary>
+    public int PageSize { get; set; } = 25;
 }
