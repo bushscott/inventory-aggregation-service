@@ -1,5 +1,4 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace InventoryAggregation.Tests;
 
@@ -8,7 +7,7 @@ public class InventorySummaryEndpointTests
     [Fact]
     public async Task ReturnsEmptyCategoryList()
     {
-        await using var app = new WebApplicationFactory<Program>();
+        await using var app = TestApp.Create();
         using var client = app.CreateClient();
 
         var response = await client.GetAsync("/api/inventory/summary");
