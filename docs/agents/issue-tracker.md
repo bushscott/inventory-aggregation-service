@@ -16,12 +16,15 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 ## Before closing a ticket
 
-Do all of these, in order, every time:
+Every ticket closes only after both gates below pass, in order:
 
-1. **Tick every acceptance criterion.** Check each `- [ ]` item against the work with evidence (a passing test, a run of the service, a search of the code), then edit the issue body so it reads `- [x]` (`gh issue edit <number> --body-file <file>`). Never close a ticket with an unticked box. If a criterion was dropped or changed, say so on the issue first.
-2. **Check every open ticket.** Read all open issues and update any that the finished work affects: a test deferred to a later ticket, a type or name a later ticket will build on, a note the README ticket needs. Edit the body when it changes what to build or how it is accepted; comment otherwise.
-3. **Make sure the work is pushed**, so the closed ticket points at code that is visible on GitHub.
-4. **Close it**, as in **Close** above, with a comment summarising what was built.
+1. **Acceptance gate.** Check each acceptance criterion against the work with evidence (a passing test, a run of the service, a search of the code), then edit the issue body to tick its box (`gh issue edit <number> --body-file <file>`). If a criterion was dropped or changed, record that on the issue before ticking. Passed when the body has no `- [ ]` left.
+2. **Open-ticket sweep.** Read every open issue and decide whether the finished work affects it: a test deferred to a later ticket, a type or name a later ticket builds on, a note the README ticket needs. Edit the body when it changes what to build or how it is accepted; comment otherwise. Passed when every open ticket is either updated or judged unaffected.
+
+Then:
+
+3. **Push** the ticket's commits, so the closed ticket points at code that is visible on GitHub.
+4. **Close**, as in **Close** above. The closing comment summarises what was built and lists each open ticket from the sweep with its outcome (updated, or unaffected), so the sweep is on record.
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 

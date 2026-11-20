@@ -8,7 +8,7 @@ used throughout.
 
 ### Issue tracker
 
-Issues and specs live as GitHub Issues on `bushscott/inventory-aggregation-service`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues and specs live as GitHub Issues on `bushscott/inventory-aggregation-service`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`. Before closing any ticket, pass both gates in its "Before closing a ticket" section.
 
 ### Triage labels
 
