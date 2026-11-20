@@ -1,0 +1,6 @@
+@HostAddress = http://localhost:5080
+
+GET {{HostAddress}}/api/inventory/summary
+Accept: application/json
+
+###
