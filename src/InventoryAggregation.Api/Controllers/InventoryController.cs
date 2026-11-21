@@ -4,8 +4,9 @@ namespace InventoryAggregation.Api.Controllers;
 
 [ApiController]
 [Route("api/inventory")]
-public class InventoryController : ControllerBase
+public class InventoryController(InventorySummaryService summaryService) : ControllerBase
 {
     [HttpGet("summary")]
-    public InventorySummary GetSummary() => new(Categories: []);
+    public Task<InventorySummary> GetSummary(CancellationToken cancellationToken) =>
+        summaryService.GetSummaryAsync(cancellationToken);
 }

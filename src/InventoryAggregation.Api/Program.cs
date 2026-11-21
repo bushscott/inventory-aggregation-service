@@ -15,6 +15,8 @@ builder.Services.AddHttpClient(InventoryApiClient.HttpClientName, (services, htt
     httpClient.DefaultRequestHeaders.Add("X-Api-Key", options.ApiKey);
 });
 builder.Services.AddSingleton<IInventoryApiClient, InventoryApiClient>();
+builder.Services.AddSingleton<InventoryAggregator>();
+builder.Services.AddSingleton<InventorySummaryService>();
 
 builder.Services.AddControllers();
 
