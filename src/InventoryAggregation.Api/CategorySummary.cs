@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace InventoryAggregation.Api;
 
 /// <summary>The figures reported for one category, computed from its available records.</summary>
@@ -5,10 +7,13 @@ namespace InventoryAggregation.Api;
 /// <param name="TotalInventoryValue">The sum of price times quantity, not rounded.</param>
 /// <param name="AvailableRecordCount">How many records in the category have stock.</param>
 /// <param name="MostRecentlyUpdated">Not worked out yet, so always null.</param>
-/// <param name="Items">The available records, in the order they arrived.</param>
+/// <param name="AvailableRecords">
+/// The available records, in the order they arrived. Written as "items", the name the response
+/// contract uses.
+/// </param>
 public sealed record CategorySummary(
     string Category,
     decimal TotalInventoryValue,
     int AvailableRecordCount,
     RecordReference? MostRecentlyUpdated,
-    IReadOnlyList<AvailableRecord> Items);
+    [property: JsonPropertyName("items")] IReadOnlyList<AvailableRecord> AvailableRecords);

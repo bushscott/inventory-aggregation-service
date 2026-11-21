@@ -20,7 +20,7 @@ public sealed class InventoryAggregator
                 TotalInventoryValue: group.Sum(record => record.Price * record.Quantity),
                 AvailableRecordCount: group.Count(),
                 MostRecentlyUpdated: null,
-                Items: group.Select(ToAvailableRecord).ToList()))
+                AvailableRecords: group.Select(ToAvailableRecord).ToList()))
             .ToList();
 
     /// <summary>Only records with stock count. Zero and negative quantities are left out of every figure.</summary>

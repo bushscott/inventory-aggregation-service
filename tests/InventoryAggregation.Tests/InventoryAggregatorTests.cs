@@ -24,7 +24,7 @@ public class InventoryAggregatorTests
                     TotalInventoryValue: 69.97m,
                     AvailableRecordCount: 2,
                     MostRecentlyUpdated: null,
-                    Items:
+                    AvailableRecords:
                     [
                         new AvailableRecord(1001, "Desk Lamp", 19.99m, 3,
                             new DateTime(2026, 9, 18, 21, 2, 0, DateTimeKind.Utc)),
@@ -65,7 +65,7 @@ public class InventoryAggregatorTests
                     TotalInventoryValue: 20.00m,
                     AvailableRecordCount: 1,
                     MostRecentlyUpdated: null,
-                    Items: [new AvailableRecord(1001, "Tent", 10.00m, 2, LastUpdated: null)]),
+                    AvailableRecords: [new AvailableRecord(1001, "Tent", 10.00m, 2, LastUpdated: null)]),
             },
             summaries,
             strict: true);
@@ -113,7 +113,7 @@ public class InventoryAggregatorTests
 
         Assert.Equal(
             [("Toys", [1003, 1001]), ("Electronics", [1002, 1004]), ("Outdoor", [1005])],
-            summaries.Select(summary => (summary.Category, summary.Items.Select(item => item.Id).ToArray())));
+            summaries.Select(summary => (summary.Category, summary.AvailableRecords.Select(record => record.Id).ToArray())));
     }
 
     [Fact]
