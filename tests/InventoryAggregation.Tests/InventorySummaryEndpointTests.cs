@@ -31,7 +31,7 @@ public class InventorySummaryEndpointTests
                   "category": "Home & Kitchen",
                   "totalInventoryValue": 83.97,
                   "availableRecordCount": 2,
-                  "mostRecentlyUpdated": null,
+                  "mostRecentlyUpdated": { "id": 1001, "name": "Desk Lamp", "lastUpdated": "2026-09-18T21:02:00Z" },
                   "items": [
                     { "id": 1001, "name": "Desk Lamp", "price": 19.99, "quantity": 3, "lastUpdated": "2026-09-18T21:02:00Z" },
                     { "id": 1002, "name": "Kettle", "price": 24.00, "quantity": 1, "lastUpdated": null }

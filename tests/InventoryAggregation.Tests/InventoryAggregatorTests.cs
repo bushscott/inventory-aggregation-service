@@ -23,7 +23,8 @@ public class InventoryAggregatorTests
                     Category: "Electronics",
                     TotalInventoryValue: 69.97m,
                     AvailableRecordCount: 2,
-                    MostRecentlyUpdated: null,
+                    MostRecentlyUpdated: new RecordReference(1001, "Desk Lamp",
+                        new DateTime(2026, 9, 18, 21, 2, 0, DateTimeKind.Utc)),
                     AvailableRecords:
                     [
                         new AvailableRecord(1001, "Desk Lamp", 19.99m, 3,
@@ -114,6 +115,91 @@ public class InventoryAggregatorTests
         Assert.Equal(
             [("Toys", [1003, 1001]), ("Electronics", [1002, 1004]), ("Outdoor", [1005])],
             summaries.Select(summary => (summary.Category, summary.AvailableRecords.Select(record => record.Id).ToArray())));
+    }
+
+    [Fact]
+    public void NamesTheAvailableRecordWithTheLatestLastUpdatedTime()
+    {
+        var summaries = aggregator.Aggregate(
+        [
+            Record(1001, "Toys", name: "Kite", lastUpdated: new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero)),
+            Record(1002, "Toys", name: "Yo-yo", lastUpdated: new DateTimeOffset(2026, 9, 18, 23, 2, 0, TimeSpan.FromHours(2))),
+            Record(1003, "Toys", name: "Puzzle", lastUpdated: new DateTimeOffset(2026, 9, 10, 8, 0, 0, TimeSpan.Zero)),
+        ]);
+
+        Assert.Equal(
+            new RecordReference(1002, "Yo-yo", new DateTime(2026, 9, 18, 21, 2, 0, DateTimeKind.Utc)),
+            Assert.Single(summaries).MostRecentlyUpdated);
+    }
+
+    [Fact]
+    public void ChoosesTheMostRecentlyUpdatedRecordOnlyFromAvailableRecords()
+    {
+        var summaries = aggregator.Aggregate(
+        [
+            Record(1001, "Outdoor", quantity: 2, name: "Tent", lastUpdated: new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero)),
+            Record(1002, "Outdoor", quantity: 0, name: "Kayak", lastUpdated: new DateTimeOffset(2026, 9, 18, 8, 0, 0, TimeSpan.Zero)),
+            Record(1003, "Outdoor", quantity: -1, name: "Canoe", lastUpdated: new DateTimeOffset(2026, 9, 19, 8, 0, 0, TimeSpan.Zero)),
+        ]);
+
+        Assert.Equal(1001, Assert.Single(summaries).MostRecentlyUpdated?.Id);
+    }
+
+    [Fact]
+    public void NeverChoosesARecordWithNoLastUpdatedTimeButStillCountsIt()
+    {
+        var summaries = aggregator.Aggregate(
+        [
+            Record(1001, "Toys", price: 50.00m, quantity: 2, name: "Drone", lastUpdated: null),
+            Record(1002, "Toys", price: 5.00m, quantity: 1, name: "Kite",
+                lastUpdated: new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero)),
+        ]);
+
+        Assert.Equivalent(
+            new[]
+            {
+                new CategorySummary(
+                    Category: "Toys",
+                    TotalInventoryValue: 105.00m,
+                    AvailableRecordCount: 2,
+                    MostRecentlyUpdated: new RecordReference(1002, "Kite",
+                        new DateTime(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc)),
+                    AvailableRecords:
+                    [
+                        new AvailableRecord(1001, "Drone", 50.00m, 2, LastUpdated: null),
+                        new AvailableRecord(1002, "Kite", 5.00m, 1,
+                            new DateTime(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc)),
+                    ]),
+            },
+            summaries,
+            strict: true);
+    }
+
+    [Fact]
+    public void HasNoMostRecentlyUpdatedRecordWhenNoAvailableRecordHasALastUpdatedTime()
+    {
+        var summaries = aggregator.Aggregate(
+        [
+            Record(1001, "Toys", lastUpdated: null),
+            Record(1002, "Toys", lastUpdated: null),
+        ]);
+
+        Assert.Null(Assert.Single(summaries).MostRecentlyUpdated);
+    }
+
+    [Fact]
+    public void ChoosesTheFirstToArriveWhenRecordsShareTheLatestLastUpdatedTime()
+    {
+        var latest = new DateTimeOffset(2026, 9, 18, 21, 2, 0, TimeSpan.Zero);
+
+        var summaries = aggregator.Aggregate(
+        [
+            Record(1001, "Toys", lastUpdated: new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero)),
+            Record(1002, "Toys", lastUpdated: latest),
+            Record(1003, "Toys", lastUpdated: latest),
+        ]);
+
+        Assert.Equal(1002, Assert.Single(summaries).MostRecentlyUpdated?.Id);
     }
 
     [Fact]

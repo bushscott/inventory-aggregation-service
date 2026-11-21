@@ -19,13 +19,30 @@ public sealed class InventoryAggregator
                 Category: group.Key.DisplayName(),
                 TotalInventoryValue: group.Sum(record => record.Price * record.Quantity),
                 AvailableRecordCount: group.Count(),
-                MostRecentlyUpdated: null,
+                MostRecentlyUpdated: FindMostRecentlyUpdated(group),
                 AvailableRecords: group.Select(ToAvailableRecord).ToList()))
             .ToList();
 
     /// <summary>Only records with stock count. Zero and negative quantities are left out of every figure.</summary>
     private static bool IsAvailable(InventoryRecord record) => record.Quantity > 0;
 
+    /// <summary>
+    /// The available record with the latest last-updated time, or null when none of them has one.
+    /// A record with no last-updated time is never chosen. On a tie, the first to arrive wins,
+    /// because MaxBy keeps the first of equal values.
+    /// </summary>
+    private static RecordReference? FindMostRecentlyUpdated(IEnumerable<InventoryRecord> availableRecords)
+    {
+        var latest = availableRecords
+            .Where(record => record.LastUpdated is not null)
+            .MaxBy(record => record.LastUpdated);
+
+        return latest is null ? null : ToRecordReference(latest);
+    }
+
     private static AvailableRecord ToAvailableRecord(InventoryRecord record) =>
         new(record.Id, record.Name, record.Price, record.Quantity, record.LastUpdated?.UtcDateTime);
+
+    private static RecordReference ToRecordReference(InventoryRecord record) =>
+        new(record.Id, record.Name, record.LastUpdated?.UtcDateTime);
 }
