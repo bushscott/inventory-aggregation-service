@@ -16,7 +16,7 @@ public sealed class InventoryAggregator
             .Where(entry => IsAvailable(entry.Record))
             .GroupBy(entry => entry.Category, entry => entry.Record)
             .Select(group => new CategorySummary(
-                Category: CategoryNormalizer.DisplayName(group.Key),
+                Category: group.Key.DisplayName(),
                 TotalInventoryValue: group.Sum(record => record.Price * record.Quantity),
                 AvailableRecordCount: group.Count(),
                 MostRecentlyUpdated: null,
