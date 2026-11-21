@@ -5,7 +5,8 @@ public static class CategoryNormalizer
 {
     /// <summary>
     /// Finds the category whose display name matches the text, ignoring letter case and
-    /// surrounding spaces, because the Inventory API spells categories inconsistently.
+    /// surrounding whitespace (spaces, tabs, line breaks), because the Inventory API spells
+    /// categories inconsistently.
     /// </summary>
     /// <exception cref="InvalidDatasetException">The text is missing or matches no category.</exception>
     public static Category Normalize(string? text)

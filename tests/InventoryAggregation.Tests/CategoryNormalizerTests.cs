@@ -21,7 +21,8 @@ public class CategoryNormalizerTests
     [InlineData("  home & kitchen ")]
     [InlineData("HOME & KITCHEN")]
     [InlineData("hOmE & kItChEn  ")]
-    public void IgnoresSurroundingSpacesAndLetterCase(string text)
+    [InlineData("\tHome & Kitchen\n")]
+    public void IgnoresSurroundingWhitespaceAndLetterCase(string text)
     {
         Assert.Equal(Category.HomeAndKitchen, CategoryNormalizer.Normalize(text));
     }
