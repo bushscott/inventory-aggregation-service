@@ -19,9 +19,13 @@ builder.Services.AddSingleton<InventoryAggregator>();
 builder.Services.AddSingleton<InventorySummaryService>();
 
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
+// Our handler writes every error response, but UseExceptionHandler() refuses to start without this.
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.MapControllers();
 
 app.Run();

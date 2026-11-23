@@ -9,17 +9,31 @@ namespace InventoryAggregation.Tests;
 /// </summary>
 internal sealed class FakeInventoryApi : HttpMessageHandler
 {
-    private readonly Queue<HttpResponseMessage> responses = new();
+    private readonly Queue<Func<HttpResponseMessage>> script = new();
 
     public List<HttpRequestMessage> Requests { get; } = [];
 
     /// <summary>Adds a 200 response with this JSON body to the script.</summary>
     public FakeInventoryApi RespondsWith(string json)
     {
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
+        script.Enqueue(() => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         });
+        return this;
+    }
+
+    /// <summary>Adds an empty response with this status code to the script.</summary>
+    public FakeInventoryApi RespondsWithStatus(HttpStatusCode status)
+    {
+        script.Enqueue(() => new HttpResponseMessage(status));
+        return this;
+    }
+
+    /// <summary>Adds a request that fails by throwing this exception, as a dropped connection or a timeout does.</summary>
+    public FakeInventoryApi Throws(Exception exception)
+    {
+        script.Enqueue(() => throw exception);
         return this;
     }
 
@@ -29,12 +43,12 @@ internal sealed class FakeInventoryApi : HttpMessageHandler
     {
         Requests.Add(request);
 
-        if (!responses.TryDequeue(out var response))
+        if (!script.TryDequeue(out var respond))
         {
             throw new InvalidOperationException(
                 $"The fake Inventory API has no response scripted for request {Requests.Count}: {request.RequestUri}");
         }
 
-        return Task.FromResult(response);
+        return Task.FromResult(respond());
     }
 }
