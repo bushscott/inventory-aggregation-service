@@ -59,7 +59,7 @@ public class InventoryApiClientRetryTests
 
         var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchAllPages(app));
 
-        Assert.Equal("The Inventory API answered with status 503 (ServiceUnavailable).", error.Message);
+        Assert.Equal("The Inventory API answered page 1 with status 503 (ServiceUnavailable).", error.Message);
         Assert.Equal(4, inventoryApi.Requests.Count);
     }
 
@@ -108,7 +108,7 @@ public class InventoryApiClientRetryTests
 
         var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchAllPages(app));
 
-        Assert.Equal("The Inventory API did not answer in time.", error.Message);
+        Assert.Equal("The Inventory API did not answer page 1 in time.", error.Message);
         Assert.IsType<TimeoutRejectedException>(error.InnerException);
         Assert.Equal(4, inventoryApi.Requests.Count);
     }

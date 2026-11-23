@@ -22,7 +22,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API answered with status 500 (InternalServerError).");
+            detail: "The Inventory API answered page 1 with status 500 (InternalServerError).");
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API could not be reached.");
+            detail: "The Inventory API could not be reached for page 1.");
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API did not answer in time.");
+            detail: "The Inventory API did not answer page 1 in time.");
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API did not answer in time.");
+            detail: "The Inventory API did not answer page 1 in time.");
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The connection to the Inventory API dropped before its response was complete.");
+            detail: "The connection to the Inventory API dropped before page 1 was complete.");
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.BadGateway,
             title: "Invalid dataset",
-            detail: "The Inventory API's response could not be read at $.records[0].lastUpdated.");
+            detail: "The Inventory API's page 1 could not be read at $.records[0].lastUpdated.");
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API answered with status 400 (BadRequest).");
+            detail: "The Inventory API answered page 2 with status 400 (BadRequest).");
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class InventorySummaryErrorResponseTests
 
         await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
             title: "Inventory API unavailable",
-            detail: "The Inventory API answered with status 500 (InternalServerError).");
+            detail: "The Inventory API answered page 1 with status 500 (InternalServerError).");
         Assert.Single(logs.Entries, entry => entry.Level >= LogLevel.Error);
     }
 

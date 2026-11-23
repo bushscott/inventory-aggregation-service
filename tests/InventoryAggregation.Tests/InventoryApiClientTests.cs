@@ -128,7 +128,7 @@ public class InventoryApiClientTests
 
         var error = await Assert.ThrowsAsync<InvalidDatasetException>(() => TestApp.FetchAllPages(app));
 
-        Assert.Equal($"The Inventory API's response has null at {location}.", error.Message);
+        Assert.Equal($"The Inventory API's page 1 has null at {location}.", error.Message);
     }
 
     [Theory]
@@ -151,7 +151,7 @@ public class InventoryApiClientTests
 
         var error = await Assert.ThrowsAsync<InvalidDatasetException>(() => TestApp.FetchAllPages(app));
 
-        Assert.Equal($"The Inventory API's response could not be read at {location}.", error.Message);
+        Assert.Equal($"The Inventory API's page 1 could not be read at {location}.", error.Message);
         Assert.IsType<JsonException>(error.InnerException);
     }
 
