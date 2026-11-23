@@ -77,6 +77,6 @@ internal static class TestApp
         });
 
     /// <summary>Calls the client the running app would use, with its real HttpClient setup.</summary>
-    public static Task<InventoryPage> FetchFirstPage(WebApplicationFactory<Program> app) =>
-        app.Services.GetRequiredService<IInventoryApiClient>().FetchFirstPageAsync(CancellationToken.None);
+    public static Task<IReadOnlyList<InventoryPage>> FetchAllPages(WebApplicationFactory<Program> app) =>
+        app.Services.GetRequiredService<IInventoryApiClient>().FetchAllPagesAsync(CancellationToken.None);
 }

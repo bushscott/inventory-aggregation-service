@@ -30,16 +30,36 @@ public sealed class InventoryApiClient(
         RespectRequiredConstructorParameters = true,
     };
 
-    public async Task<InventoryPage> FetchFirstPageAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<InventoryPage>> FetchAllPagesAsync(CancellationToken cancellationToken)
     {
         var httpClient = httpClientFactory.CreateClient(HttpClientName);
+
+        // Page 1 says how many pages there are. The rest follow one at a time; the resilience
+        // handler waits out the rate limit when the requests exceed it.
+        var firstPage = await FetchPageAsync(httpClient, pageNumber: 1, cancellationToken);
+        var pages = new List<InventoryPage> { firstPage };
+        for (var pageNumber = 2; pageNumber <= firstPage.TotalPages; pageNumber++)
+        {
+            pages.Add(await FetchPageAsync(httpClient, pageNumber, cancellationToken));
+        }
+
+        return pages;
+    }
+
+    /// <summary>
+    /// Fetches one page. Every way the request can fail becomes one of our two exceptions, with
+    /// the lower-level exception kept as the inner exception.
+    /// </summary>
+    private async Task<InventoryPage> FetchPageAsync(
+        HttpClient httpClient, int pageNumber, CancellationToken cancellationToken)
+    {
         var pageSize = options.Value.PageSize;
 
         InventoryPage? page;
         try
         {
             page = await httpClient.GetFromJsonAsync<InventoryPage>(
-                $"/api/records?page=1&pageSize={pageSize}", JsonOptions, cancellationToken);
+                $"/api/records?page={pageNumber}&pageSize={pageSize}", JsonOptions, cancellationToken);
         }
         catch (HttpRequestException exception) when (exception.StatusCode is { } status)
         {

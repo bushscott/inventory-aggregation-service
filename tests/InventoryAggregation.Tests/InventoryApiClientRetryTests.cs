@@ -30,9 +30,9 @@ public class InventoryApiClientRetryTests
             .RespondsWith(OneRecordPage);
         await using var app = TestApp.Create(inventoryApi: inventoryApi);
 
-        var page = await TestApp.FetchFirstPage(app);
+        var pages = await TestApp.FetchAllPages(app);
 
-        Assert.Equal(1001, Assert.Single(page.Records).Id);
+        Assert.Equal(1001, Assert.Single(Assert.Single(pages).Records).Id);
         Assert.Equal(2, inventoryApi.Requests.Count);
     }
 
@@ -44,9 +44,9 @@ public class InventoryApiClientRetryTests
             .RespondsWith(OneRecordPage);
         await using var app = TestApp.Create(inventoryApi: inventoryApi);
 
-        var page = await TestApp.FetchFirstPage(app);
+        var pages = await TestApp.FetchAllPages(app);
 
-        Assert.Equal(1001, Assert.Single(page.Records).Id);
+        Assert.Equal(1001, Assert.Single(Assert.Single(pages).Records).Id);
         Assert.Equal(2, inventoryApi.Requests.Count);
     }
 
@@ -57,7 +57,7 @@ public class InventoryApiClientRetryTests
         var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.ServiceUnavailable, times: 5);
         await using var app = TestApp.Create(inventoryApi: inventoryApi);
 
-        var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchFirstPage(app));
+        var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchAllPages(app));
 
         Assert.Equal("The Inventory API answered with status 503 (ServiceUnavailable).", error.Message);
         Assert.Equal(4, inventoryApi.Requests.Count);
@@ -73,7 +73,7 @@ public class InventoryApiClientRetryTests
             .RespondsWith(OneRecordPage);
         await using var app = TestApp.Create(inventoryApi: inventoryApi);
 
-        await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchFirstPage(app));
+        await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchAllPages(app));
 
         Assert.Single(inventoryApi.Requests);
     }
@@ -89,10 +89,10 @@ public class InventoryApiClientRetryTests
         var client = app.Services.GetRequiredService<IInventoryApiClient>();
 
         var stopwatch = Stopwatch.StartNew();
-        var page = await client.FetchFirstPageAsync(CancellationToken.None);
+        var pages = await client.FetchAllPagesAsync(CancellationToken.None);
         stopwatch.Stop();
 
-        Assert.Equal(1001, Assert.Single(page.Records).Id);
+        Assert.Equal(1001, Assert.Single(Assert.Single(pages).Records).Id);
         Assert.Equal(2, inventoryApi.Requests.Count);
         // Retries are otherwise immediate in tests (see TestApp), so this wait can only come from
         // the Retry-After header. The bound is a little under 1 second because timers can fire early.
@@ -106,7 +106,7 @@ public class InventoryApiClientRetryTests
         var inventoryApi = new FakeInventoryApi().NeverResponds(times: 5);
         await using var app = TestApp.Create(inventoryApi: inventoryApi, attemptTimeout: TimeSpan.FromMilliseconds(100));
 
-        var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchFirstPage(app));
+        var error = await Assert.ThrowsAsync<InventoryApiUnavailableException>(() => TestApp.FetchAllPages(app));
 
         Assert.Equal("The Inventory API did not answer in time.", error.Message);
         Assert.IsType<TimeoutRejectedException>(error.InnerException);
@@ -122,7 +122,7 @@ public class InventoryApiClientRetryTests
             .RespondsWith(OneRecordPage);
         await using var app = TestApp.Create(inventoryApi: inventoryApi, logs: logs);
 
-        await TestApp.FetchFirstPage(app);
+        await TestApp.FetchAllPages(app);
 
         // The resilience library writes these entries; "OnRetry" and "Result:" are its wording.
         var retries = logs.Entries.Where(entry => entry.Message.Contains("OnRetry")).ToList();

@@ -101,6 +101,27 @@ public class InventorySummaryErrorResponseTests
     }
 
     [Fact]
+    public async Task Returns503WithNoPartialFiguresWhenALaterPageFails()
+    {
+        var inventoryApi = new FakeInventoryApi()
+            .RespondsWith("""
+                {
+                  "page": 1, "pageSize": 25, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null }
+                  ]
+                }
+                """)
+            .RespondsWithStatus(HttpStatusCode.BadRequest);
+
+        var response = await GetSummary(inventoryApi);
+
+        await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
+            title: "Inventory API unavailable",
+            detail: "The Inventory API answered with status 400 (BadRequest).");
+    }
+
+    [Fact]
     public async Task Returns502NamingAnUnknownCategory()
     {
         var inventoryApi = new FakeInventoryApi().RespondsWith("""

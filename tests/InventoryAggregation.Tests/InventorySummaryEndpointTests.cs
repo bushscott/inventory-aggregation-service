@@ -44,6 +44,52 @@ public class InventorySummaryEndpointTests
     }
 
     [Fact]
+    public async Task SummarisesTheRecordsFromEveryPage()
+    {
+        var inventoryApi = new FakeInventoryApi()
+            .RespondsWith("""
+                {
+                  "page": 1, "pageSize": 1, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null }
+                  ]
+                }
+                """)
+            .RespondsWith("""
+                {
+                  "page": 2, "pageSize": 1, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1002, "name": "Kayak", "category": "outdoor ", "price": 300.00, "quantity": 2, "lastUpdated": null }
+                  ]
+                }
+                """);
+        await using var app = TestApp.Create(pageSize: 1, inventoryApi: inventoryApi);
+        using var client = app.CreateClient();
+
+        var response = await client.GetAsync("/api/inventory/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertJsonEqual(
+            """
+            {
+              "categories": [
+                {
+                  "category": "Outdoor",
+                  "totalInventoryValue": 680.00,
+                  "availableRecordCount": 2,
+                  "mostRecentlyUpdated": null,
+                  "items": [
+                    { "id": 1001, "name": "Tent", "price": 80.00, "quantity": 1, "lastUpdated": null },
+                    { "id": 1002, "name": "Kayak", "price": 300.00, "quantity": 2, "lastUpdated": null }
+                  ]
+                }
+              ]
+            }
+            """,
+            await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task ReturnsLastUpdatedInUtcWithAZSuffix()
     {
         var inventoryApi = new FakeInventoryApi().RespondsWith("""
