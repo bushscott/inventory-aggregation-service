@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using Polly.Timeout;
 
 namespace InventoryAggregation.Api;
 
@@ -49,9 +50,16 @@ public sealed class InventoryApiClient(
         {
             throw new InventoryApiUnavailableException("The Inventory API could not be reached.", exception);
         }
+        catch (TimeoutRejectedException exception)
+        {
+            // The resilience handler gave up waiting for the response (its timeouts are in Program.cs).
+            throw new InventoryApiUnavailableException("The Inventory API did not answer in time.", exception);
+        }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            // HttpClient gave up waiting. (When our own caller cancels, that is not a failure to report.)
+            // HttpClient's own timeout elapsed. The resilience handler's timeouts end once the
+            // headers arrive, so this one is what stops a body that stalls. (When our own caller
+            // cancels, that is not a failure to report.)
             throw new InventoryApiUnavailableException("The Inventory API did not answer in time.", exception);
         }
         catch (IOException exception)

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace InventoryAggregation.Tests;
@@ -24,12 +25,16 @@ internal static class TestApp
     /// A fake Inventory API to send the service's requests to, in place of the network.
     /// </param>
     /// <param name="logs">Collects what the service logs, in addition to the usual output.</param>
+    /// <param name="attemptTimeout">
+    /// How long the resilience handler waits for each attempt. Null keeps its default.
+    /// </param>
     public static WebApplicationFactory<Program> Create(
         string baseUrl = "http://inventory-api.test",
         string apiKey = "test-api-key",
         int? pageSize = null,
         FakeInventoryApi? inventoryApi = null,
-        CapturedLogs? logs = null) =>
+        CapturedLogs? logs = null,
+        TimeSpan? attemptTimeout = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
@@ -47,6 +52,17 @@ internal static class TestApp
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(settings));
 
+            // Retry at once, so the suite runs in seconds. A Retry-After header is still honoured.
+            builder.ConfigureTestServices(services =>
+                services.ConfigureAll<HttpStandardResilienceOptions>(resilience =>
+                {
+                    resilience.Retry.Delay = TimeSpan.Zero;
+                    if (attemptTimeout is not null)
+                    {
+                        resilience.AttemptTimeout.Timeout = attemptTimeout.Value;
+                    }
+                }));
+
             if (inventoryApi is not null)
             {
                 builder.ConfigureTestServices(services =>
@@ -59,4 +75,8 @@ internal static class TestApp
                 builder.ConfigureLogging(logging => logging.AddProvider(logs));
             }
         });
+
+    /// <summary>Calls the client the running app would use, with its real HttpClient setup.</summary>
+    public static Task<InventoryPage> FetchFirstPage(WebApplicationFactory<Program> app) =>
+        app.Services.GetRequiredService<IInventoryApiClient>().FetchFirstPageAsync(CancellationToken.None);
 }

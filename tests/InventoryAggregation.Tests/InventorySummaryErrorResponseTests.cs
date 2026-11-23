@@ -10,10 +10,13 @@ public class InventorySummaryErrorResponseTests
 {
     private const string ApiKey = "test-api-key";
 
+    /// <summary>A retried failure is tried this often: the first try and the standard handler's 3 retries.</summary>
+    private const int AllAttempts = 4;
+
     [Fact]
     public async Task Returns503NamingTheStatusTheInventoryApiAnsweredWith()
     {
-        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError);
+        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError, times: AllAttempts);
 
         var response = await GetSummary(inventoryApi);
 
@@ -26,7 +29,8 @@ public class InventorySummaryErrorResponseTests
     public async Task Returns503WhenTheInventoryApiCannotBeReached()
     {
         var inventoryApi = new FakeInventoryApi().Throws(
-            new HttpRequestException(HttpRequestError.ConnectionError, "Connection refused (inventory-api.test:80)"));
+            new HttpRequestException(HttpRequestError.ConnectionError, "Connection refused (inventory-api.test:80)"),
+            times: AllAttempts);
 
         var response = await GetSummary(inventoryApi);
 
@@ -36,8 +40,22 @@ public class InventorySummaryErrorResponseTests
     }
 
     [Fact]
-    public async Task Returns503WhenTheInventoryApiTimesOut()
+    public async Task Returns503WhenEveryAttemptTimesOut()
     {
+        var inventoryApi = new FakeInventoryApi().NeverResponds(times: AllAttempts);
+
+        var response = await GetSummary(inventoryApi, attemptTimeout: TimeSpan.FromMilliseconds(100));
+
+        await AssertProblemDetails(response, HttpStatusCode.ServiceUnavailable,
+            title: "Inventory API unavailable",
+            detail: "The Inventory API did not answer in time.");
+    }
+
+    [Fact]
+    public async Task Returns503WhenHttpClientsOwnTimeoutElapses()
+    {
+        // What HttpClient throws when its own Timeout elapses. The resilience handler's timeouts
+        // only cover waiting for the response headers, so this is what a body that stalls produces.
         var inventoryApi = new FakeInventoryApi().Throws(new TaskCanceledException(
             "The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.",
             new TimeoutException()));
@@ -118,7 +136,7 @@ public class InventorySummaryErrorResponseTests
     public async Task LogsEachFailureOnceAtErrorLevelWithItsCause()
     {
         var logs = new CapturedLogs();
-        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError);
+        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError, times: AllAttempts);
 
         await GetSummary(inventoryApi, logs);
 
@@ -131,7 +149,7 @@ public class InventorySummaryErrorResponseTests
     public async Task AnswersWithProblemDetailsEvenWhenTheCallerDoesNotAskForJson()
     {
         var logs = new CapturedLogs();
-        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError);
+        var inventoryApi = new FakeInventoryApi().RespondsWithStatus(HttpStatusCode.InternalServerError, times: AllAttempts);
 
         var response = await GetSummary(inventoryApi, logs, accept: "text/plain");
 
@@ -142,9 +160,10 @@ public class InventorySummaryErrorResponseTests
     }
 
     private static async Task<HttpResponseMessage> GetSummary(
-        FakeInventoryApi inventoryApi, CapturedLogs? logs = null, string? accept = null)
+        FakeInventoryApi inventoryApi, CapturedLogs? logs = null, string? accept = null, TimeSpan? attemptTimeout = null)
     {
-        await using var app = TestApp.Create(apiKey: ApiKey, inventoryApi: inventoryApi, logs: logs);
+        await using var app = TestApp.Create(
+            apiKey: ApiKey, inventoryApi: inventoryApi, logs: logs, attemptTimeout: attemptTimeout);
         using var client = app.CreateClient();
         if (accept is not null)
         {
