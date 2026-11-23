@@ -64,6 +64,25 @@ public class InventorySummaryErrorResponseTests
     }
 
     [Fact]
+    public async Task Returns502NamingWhereTheResponseCouldNotBeRead()
+    {
+        var inventoryApi = new FakeInventoryApi().RespondsWith("""
+            {
+              "page": 1, "pageSize": 25, "totalPages": 1, "totalRecords": 1,
+              "records": [
+                { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": "yesterday" }
+              ]
+            }
+            """);
+
+        var response = await GetSummary(inventoryApi);
+
+        await AssertProblemDetails(response, HttpStatusCode.BadGateway,
+            title: "Invalid dataset",
+            detail: "The Inventory API's response could not be read at $.records[0].lastUpdated.");
+    }
+
+    [Fact]
     public async Task Returns502NamingAnUnknownCategory()
     {
         var inventoryApi = new FakeInventoryApi().RespondsWith("""

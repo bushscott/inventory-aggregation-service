@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
 namespace InventoryAggregation.Api;
@@ -13,6 +16,19 @@ public sealed class InventoryApiClient(
     /// <summary>The name of the <see cref="HttpClient"/> configured for the Inventory API.</summary>
     public const string HttpClientName = "InventoryApi";
 
+    /// <summary>
+    /// The usual web JSON settings, made strict so a malformed response fails instead of being
+    /// read as something plausible.
+    /// </summary>
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        // A number written as text, such as "19.99", is a value in the wrong format.
+        NumberHandling = JsonNumberHandling.Strict,
+        // Every field must be present. Without this, a missing price or quantity would read as 0.
+        // Name, category and last-updated time may still be null.
+        RespectRequiredConstructorParameters = true,
+    };
+
     public async Task<InventoryPage> FetchFirstPageAsync(CancellationToken cancellationToken)
     {
         var httpClient = httpClientFactory.CreateClient(HttpClientName);
@@ -22,7 +38,7 @@ public sealed class InventoryApiClient(
         try
         {
             page = await httpClient.GetFromJsonAsync<InventoryPage>(
-                $"/api/records?page=1&pageSize={pageSize}", cancellationToken);
+                $"/api/records?page=1&pageSize={pageSize}", JsonOptions, cancellationToken);
         }
         catch (HttpRequestException exception) when (exception.StatusCode is { } status)
         {
@@ -44,7 +60,43 @@ public sealed class InventoryApiClient(
             throw new InventoryApiUnavailableException(
                 "The connection to the Inventory API dropped before its response was complete.", exception);
         }
+        catch (JsonException exception)
+        {
+            throw new InvalidDatasetException(
+                $"The Inventory API's response could not be read at {exception.Path}.", exception);
+        }
 
-        return page!;
+        RejectNulls(page);
+
+        return page;
     }
+
+    /// <summary>
+    /// Fails when the response has null in place of the page, its records list or a record. The
+    /// JSON reader lets these through, but everything after this relies on them being there.
+    /// </summary>
+    private static void RejectNulls([NotNull] InventoryPage? page)
+    {
+        if (page is null)
+        {
+            throw NullAt("$");
+        }
+
+        if (page.Records is null)
+        {
+            throw NullAt("$.records");
+        }
+
+        for (var index = 0; index < page.Records.Count; index++)
+        {
+            if (page.Records[index] is null)
+            {
+                throw NullAt($"$.records[{index}]");
+            }
+        }
+    }
+
+    /// <summary>The location is a JSON path, as in the JSON reader's own errors.</summary>
+    private static InvalidDatasetException NullAt(string location) =>
+        new($"The Inventory API's response has null at {location}.");
 }

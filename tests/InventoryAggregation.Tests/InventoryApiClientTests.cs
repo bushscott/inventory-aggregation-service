@@ -1,3 +1,4 @@
+using System.Text.Json;
 using InventoryAggregation.Api;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +70,46 @@ public class InventoryApiClientTests
                 new InventoryRecord(1002, Name: null, "Toys", 4.5m, 0, LastUpdated: null),
             ],
             page.Records);
+    }
+
+    [Theory]
+    [InlineData("null", "$")]
+    [InlineData("""{ "records": null }""", "$.records")]
+    [InlineData(
+        """{ "records": [{ "id": 1001, "name": "Tent", "category": "Outdoor", "price": 19.99, "quantity": 1, "lastUpdated": null }, null] }""",
+        "$.records[1]")]
+    public async Task FailsAsAnInvalidDatasetNamingWhereThePageItsRecordsOrARecordIsNull(string body, string location)
+    {
+        var inventoryApi = new FakeInventoryApi().RespondsWith(body);
+        await using var app = TestApp.Create(inventoryApi: inventoryApi);
+
+        var error = await Assert.ThrowsAsync<InvalidDatasetException>(() => FetchFirstPage(app));
+
+        Assert.Equal($"The Inventory API's response has null at {location}.", error.Message);
+    }
+
+    [Theory]
+    [InlineData(
+        """{ "records": [{ "id": 1001, "name": "Tent", "category": "Outdoor", "price": "19.99", "quantity": 1, "lastUpdated": null }] }""",
+        "$.records[0].price")]
+    [InlineData(
+        """{ "records": [{ "id": 1001, "name": "Tent", "category": "Outdoor", "price": 19.99, "lastUpdated": null }] }""",
+        "$.records[0]")]
+    [InlineData(
+        """{ "records": [{ "id": 1001, "category": "Outdoor", "price": 19.99, "quantity": 1, "lastUpdated": null }] }""",
+        "$.records[0]")]
+    [InlineData(
+        """{ "page": 1, "pageSize": 25, "totalPages": 1, "totalRecords": 0 }""",
+        "$")]
+    public async Task FailsAsAnInvalidDatasetOnANumberWrittenAsTextOrAMissingField(string body, string location)
+    {
+        var inventoryApi = new FakeInventoryApi().RespondsWith(body);
+        await using var app = TestApp.Create(inventoryApi: inventoryApi);
+
+        var error = await Assert.ThrowsAsync<InvalidDatasetException>(() => FetchFirstPage(app));
+
+        Assert.Equal($"The Inventory API's response could not be read at {location}.", error.Message);
+        Assert.IsType<JsonException>(error.InnerException);
     }
 
     /// <summary>Calls the client the running app would use, with its real HttpClient setup.</summary>
