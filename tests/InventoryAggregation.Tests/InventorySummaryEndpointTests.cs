@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using InventoryAggregation.Api;
+using Microsoft.Extensions.Logging;
 
 namespace InventoryAggregation.Tests;
 
@@ -136,6 +138,42 @@ public class InventorySummaryEndpointTests
             }
             """,
             await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task LogsEachFetchWithThePagesRecordsRepeatsAndTimeTaken()
+    {
+        var logs = new CapturedLogs();
+        var inventoryApi = new FakeInventoryApi()
+            .RespondsWith("""
+                {
+                  "page": 1, "pageSize": 1, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null }
+                  ]
+                }
+                """)
+            .RespondsWith("""
+                {
+                  "page": 2, "pageSize": 1, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null },
+                    { "id": 1002, "name": "Kayak", "category": "Outdoor", "price": 300.00, "quantity": 2, "lastUpdated": null }
+                  ]
+                }
+                """);
+        await using var app = TestApp.Create(pageSize: 1, inventoryApi: inventoryApi, logs: logs);
+        using var client = app.CreateClient();
+
+        var response = await client.GetAsync("/api/inventory/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // The resilience library logs during a fetch too, so pick this service's entry by its logger.
+        var entry = Assert.Single(logs.Entries, entry => entry.LoggerName == typeof(InventorySummaryService).FullName);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Matches(
+            @"^Fetched the dataset from the Inventory API\. Pages: 2, unique records: 2, repeated records removed: 1, time taken: \d+ ms\.$",
+            entry.Message);
     }
 
     [Fact]
