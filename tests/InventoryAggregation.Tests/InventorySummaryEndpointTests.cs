@@ -90,6 +90,55 @@ public class InventorySummaryEndpointTests
     }
 
     [Fact]
+    public async Task CountsARecordRepeatedAcrossTwoPagesOnce()
+    {
+        var inventoryApi = new FakeInventoryApi()
+            .RespondsWith("""
+                {
+                  "page": 1, "pageSize": 2, "totalPages": 2, "totalRecords": 3,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null },
+                    { "id": 1002, "name": "Kayak", "category": "Outdoor", "price": 300.00, "quantity": 2, "lastUpdated": null }
+                  ]
+                }
+                """)
+            .RespondsWith("""
+                {
+                  "page": 2, "pageSize": 2, "totalPages": 2, "totalRecords": 3,
+                  "records": [
+                    { "id": 1002, "name": "Kayak", "category": "Outdoor", "price": 300.00, "quantity": 2, "lastUpdated": null },
+                    { "id": 1003, "name": "Lantern", "category": "Outdoor", "price": 15.00, "quantity": 4, "lastUpdated": null }
+                  ]
+                }
+                """);
+        await using var app = TestApp.Create(pageSize: 2, inventoryApi: inventoryApi);
+        using var client = app.CreateClient();
+
+        var response = await client.GetAsync("/api/inventory/summary");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertJsonEqual(
+            """
+            {
+              "categories": [
+                {
+                  "category": "Outdoor",
+                  "totalInventoryValue": 740.00,
+                  "availableRecordCount": 3,
+                  "mostRecentlyUpdated": null,
+                  "items": [
+                    { "id": 1001, "name": "Tent", "price": 80.00, "quantity": 1, "lastUpdated": null },
+                    { "id": 1002, "name": "Kayak", "price": 300.00, "quantity": 2, "lastUpdated": null },
+                    { "id": 1003, "name": "Lantern", "price": 15.00, "quantity": 4, "lastUpdated": null }
+                  ]
+                }
+              ]
+            }
+            """,
+            await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task ReturnsLastUpdatedInUtcWithAZSuffix()
     {
         var inventoryApi = new FakeInventoryApi().RespondsWith("""

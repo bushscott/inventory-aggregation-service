@@ -141,6 +141,35 @@ public class InventorySummaryErrorResponseTests
     }
 
     [Fact]
+    public async Task Returns502NamingARepeatedRecordWhoseCopiesDiffer()
+    {
+        var inventoryApi = new FakeInventoryApi()
+            .RespondsWith("""
+                {
+                  "page": 1, "pageSize": 25, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1001, "name": "Tent", "category": "Outdoor", "price": 80.00, "quantity": 1, "lastUpdated": null },
+                    { "id": 1002, "name": "Kayak", "category": "Outdoor", "price": 300.00, "quantity": 2, "lastUpdated": null }
+                  ]
+                }
+                """)
+            .RespondsWith("""
+                {
+                  "page": 2, "pageSize": 25, "totalPages": 2, "totalRecords": 2,
+                  "records": [
+                    { "id": 1002, "name": "Kayak", "category": "Outdoor", "price": 300.00, "quantity": 3, "lastUpdated": null }
+                  ]
+                }
+                """);
+
+        var response = await GetSummary(inventoryApi);
+
+        await AssertProblemDetails(response, HttpStatusCode.BadGateway,
+            title: "Invalid dataset",
+            detail: "Record 1002 arrived more than once, and the copies differ.");
+    }
+
+    [Fact]
     public async Task Returns500WithAGenericDetailForAnyOtherFailure()
     {
         var inventoryApi = new FakeInventoryApi().Throws(

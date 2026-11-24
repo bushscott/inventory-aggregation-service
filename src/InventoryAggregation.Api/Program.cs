@@ -27,6 +27,7 @@ builder.Services.Configure<TelemetryOptions>(telemetry =>
             ? ResilienceEventSeverity.Warning
             : arguments.Event.Severity);
 builder.Services.AddSingleton<IInventoryApiClient, InventoryApiClient>();
+builder.Services.AddSingleton<DatasetValidator>();
 builder.Services.AddSingleton<InventoryAggregator>();
 builder.Services.AddSingleton<InventorySummaryService>();
 
