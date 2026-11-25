@@ -14,7 +14,7 @@ One product line in the inventory, identified by a unique id, with a name, a cat
 _Avoid_: Item, product, row, entry
 
 **Repeated Record**:
-A record that the Inventory API returns more than once, on different pages. Identical copies are the same record; copies that disagree are an error.
+A record that the Inventory API returns more than once. The repeats seen so far are on different pages, but a repeat within one page counts too. Identical copies are the same record; copies that disagree are an error.
 _Avoid_: Duplicate, dupe
 
 **Dataset**:
@@ -26,7 +26,7 @@ A record with a quantity greater than zero. Only available records contribute to
 _Avoid_: In-stock item, active record
 
 **Category**:
-One of a fixed, known list of groupings that every record belongs to exactly one of. The Inventory API spells a category's name inconsistently; the service recognises it regardless of letter case and surrounding spaces.
+One of a fixed, known list of groupings that every record belongs to exactly one of. The Inventory API spells a category's name inconsistently; the service recognises it regardless of letter case and surrounding whitespace.
 _Avoid_: Group, type, department
 
 **Unknown Category**:

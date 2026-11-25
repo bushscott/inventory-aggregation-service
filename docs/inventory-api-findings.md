@@ -1,6 +1,6 @@
 # Inventory API: observed behaviour
 
-What the upstream Inventory API (`GET /api/records`) actually does, measured by
+What the Inventory API (`GET /api/records`) actually does, measured by
 probing it on 2026-11-20. The assignment says the API is "not perfectly well
 behaved"; this is the list of ways, and each one is something the service has
 to handle.
