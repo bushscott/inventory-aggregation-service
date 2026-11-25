@@ -359,8 +359,8 @@ decisions that most shape the result, each explained in the sections below:
 
 - **.NET 10**, the current long-term-support release, with one web project and one test
   project.
-- **A classic controller with one action** (`GET /api/inventory/summary`), because it is a
-  conventional shape that any .NET reviewer can find their way around.
+- **A classic controller with one action** (`GET /api/inventory/summary`), rather than a
+  minimal API, because it is the style I prefer.
 - **Plain HTTP only.** It runs locally, with no HTTPS redirection, authentication or
   OpenAPI document.
 - **Port 5080**, because 5000 is often taken by macOS's AirPlay Receiver.
