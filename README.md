@@ -197,7 +197,22 @@ types to one handler, so no other code catches and translates errors.
 
 ## Decisions and assumptions
 
-Where the assignment left something open, this is what I chose and why.
+Where the assignment left something open, this is what I chose and why. These are the
+decisions that most shape the result, each explained in the sections below:
+
+- A negative quantity is treated like a quantity of 0: the record is left out, but it is
+  not an error.
+- Categories are a closed list of six. Category text that matches none of them fails the
+  request, instead of quietly becoming a new category.
+- A category with no available records is left out of the response.
+- Most recently updated is `null` when no available record has a last-updated time. On a
+  tie, the record that arrived first wins.
+- Money is exact: `decimal`, never rounded.
+- A `200` is not trusted. The Dataset is checked for completeness and consistency before
+  anything is aggregated, and a failed check fails the request.
+- Identical copies of a Repeated Record are kept once. Copies that differ fail the request.
+- A 503 means the Inventory API could not answer, so trying again later may work. A 502
+  means it answered with something wrong, so retrying will not help.
 
 ### Business rules and the response
 
@@ -216,7 +231,8 @@ Where the assignment left something open, this is what I chose and why.
 - **Category text is matched ignoring letter case and surrounding whitespace** (spaces,
   tabs, line breaks). The Inventory API uses 36 spellings of 6 categories. Whitespace is not
   a misspelling, so ignoring it is safe. Nothing else is guessed at.
-- **Category names are shown as the Inventory API spells them**, such as "Home & Kitchen".
+- **Each category is shown under one fixed name**, such as "Home & Kitchen", whichever
+  spelling its records used. The six names are kept in `Category.cs`.
 - **A category with no available records is left out**, so a caller is never shown a
   Category Summary with nothing in it.
 - **Most recently updated:**
@@ -266,8 +282,10 @@ Where the assignment left something open, this is what I chose and why.
   - Copies that differ fail the request, naming the record, because there is no way to
     know which copy is right.
   - "Identical" uses C# record equality on every field, so there is no field list to keep
-    up to date. A price of `1.0` equals `1.00`, two times naming the same instant are equal
-    whatever their offsets, and category text must match exactly.
+    up to date. A price of `1.0` equals `1.00`, and two times naming the same instant are
+    equal whatever their offsets. Category text must match exactly, though: copies spelled
+    `"Toys"` and `" toys"` count as differing and fail, even though both spellings match the
+    Toys category.
   - A record repeated within one page is treated the same way as one repeated across pages.
 - **A negative price fails the request, naming the record**, because a price below zero is
   impossible and would distort a total. The message writes the price as the Inventory API
@@ -277,9 +295,10 @@ Where the assignment left something open, this is what I chose and why.
   and records with the other two still count.
 - **Reading is strict.** A number written as text (`"price": "19.99"`) fails. A missing
   field also fails, where .NET would otherwise read it as 0. `name`, `category` and
-  `lastUpdated` may be `null` but must be present. `null` in place of a page, its records
-  list or a record also fails, naming the JSON path. All of these are 502s, so a malformed
-  response is never read as something plausible.
+  `lastUpdated` must be present. `name` and `lastUpdated` may be `null`. A `null`
+  `category` gets past reading, but then fails the category check as a missing category.
+  `null` in place of a page, its records list or a record also fails, naming the JSON path.
+  All of these are 502s, so a malformed response is never read as something plausible.
 
 ### Errors
 
@@ -313,13 +332,14 @@ Where the assignment left something open, this is what I chose and why.
     Against the real Inventory API, this is where the 10 seconds go.
   - **Backs off.** Without `Retry-After`, retries wait an exponentially growing delay with
     random jitter, starting at about 2 seconds.
-  - **Times out.** Each attempt gets 10 seconds, and the whole request, retries included,
+  - **Times out.** Each attempt gets 10 seconds, and each page request, retries included,
     gets 30. So an unreasonable `Retry-After` fails cleanly as a 503 instead of hanging.
   - **Logs each retry** as a warning with its reason, for example
     `Resilience event occurred. EventName: 'OnRetry', … Result: '429'`.
   - **Circuit breaker and concurrency limiter.** These are also part of the handler, but
-    neither can trigger here. The breaker needs at least 100 requests in 30 seconds, and the
-    limiter allows 1,000 at once, while a full fetch makes about 8, one at a time.
+    neither can trigger during a single call. The breaker needs at least 100 requests in 30
+    seconds, and the limiter allows 1,000 at once, while a full fetch makes about 8, one at a
+    time. Many simultaneous calls are another matter, as the known limitations say.
 
   `InventoryApiClientRetryTests` tests each behaviour this service relies on. That covers
   retrying a 500, a 503, a connection failure and a timed-out attempt; failing fast on a 400
@@ -348,8 +368,8 @@ Where the assignment left something open, this is what I chose and why.
   variables work anywhere.
 - **Settings are checked at startup** (`[Required]` and `ValidateOnStart`). A missing setting
   stops the service before it takes a request, with a message naming the setting.
-- **The base URL is a `string` setting**, converted to a `Uri` once. As a `Uri` property,
-  an empty setting would bind as an empty relative `Uri` and get past `[Required]`.
+- **The base URL is a `string` setting, not a `Uri`.** As a `Uri` property, an empty
+  setting would bind as an empty relative `Uri` and get past `[Required]`.
 - **Logging uses `ILogger` with the default console output.**
   - Each fetch is logged at information level, once its Dataset passes validation, for
     example `Fetched the dataset from the Inventory API. Pages: 7, unique records: 157,
@@ -381,6 +401,12 @@ Where the assignment left something open, this is what I chose and why.
   full fetch: 7 pages plus one retry after the 429, about 8 requests in all. The brief says
   the Dataset is static, so caching it with an expiry behind `IInventoryApiClient` would make
   repeat calls instant. This is the first thing I would add.
+- **Simultaneous calls share the Inventory API's rate limit.** The limit is 5 requests per
+  10 seconds per API key, and every call does its own full fetch. So calls made at the same
+  time slow each other down, and enough of them would use up their retries and fail with
+  503s. With many more, the circuit breaker, which every call shares, could open, and the
+  calls it rejects would get a 500. I worked this out from the code and have not tested it.
+  A cache would fix this too, as long as simultaneous calls share one fetch.
 - **The page count from page 1 is trusted with no upper bound.** A huge count would mean
   requesting empty pages until it is reached. A sanity cap would stop that.
 - **An empty inventory would give a 502, not an empty summary.** If page 1 reported 0 total
@@ -398,9 +424,10 @@ Where the assignment left something open, this is what I chose and why.
   a 503.
 - **A few rare failures become a 500, not a 502 or 503:** the malformed base URL above; a
   success response naming an unknown character set; and Polly's `BrokenCircuitException` and
-  `RateLimiterRejectedException`, which cannot trigger at this service's request rate.
-- **A response body that stalls is only abandoned after `HttpClient`'s 100-second
-  timeout.**
+  `RateLimiterRejectedException`, which a single call cannot trigger.
+- **Slow responses are limited per page request, not per call.** Each page request gives up
+  after 30 seconds, and a response body that stalls is only abandoned at `HttpClient`'s
+  100-second timeout. Nothing limits the call to the endpoint as a whole.
 - **Some rules only run in the unit tests.** The real Dataset has a last-updated time on
   every record and no ties, so the undated and tie rules never fire against the real
   Inventory API.
@@ -420,7 +447,8 @@ With more time, in this order, I would:
 ## Finding your way around
 
 - `src/InventoryAggregation.Api/`: the service.
-- `tests/InventoryAggregation.Tests/`: the tests, one class per piece.
+- `tests/InventoryAggregation.Tests/`: the tests. Each test class is named after what it
+  covers, such as `DatasetValidatorTests` or `InventoryApiClientRetryTests`.
 - [`docs/inventory-api-findings.md`](docs/inventory-api-findings.md): what the Inventory API
   actually does, measured by probing it, and the expected results the service was checked
   against.
